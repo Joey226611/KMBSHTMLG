@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Kerst Bingo</title>
+    <style>
+        body {
+            margin: 0;
+            background: #0d0d0d;
+            color: white;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            transition: background 0.5s, color 0.5s;
+        }
+
+        /* ❄️ Snow */
+        .snow {
+            position: fixed;
+            top: -10px;
+            color: white;
+            animation: fall linear infinite;
+            opacity: 0.8;
+            pointer-events: none;
+        }
+
+        @keyframes fall {
+            0% {transform: translateY(-10px);}
+            100% {transform: translateY(110vh);}
+        }
+
+        #topbar {
+            background: rgba(20,20,20,0.8);
+            padding: 12px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 22px;
+            border-bottom: 2px solid #555;
+            backdrop-filter: blur(10px);
+        }
+
+        #startBtn, #themeBtn {
+            background: #2ecc71;
+            color: black;
+            font-weight: bold;
+            padding: 10px 18px;
+            cursor: pointer;
+            border-radius: 8px;
+            border: none;
+            font-size: 16px;
+            margin-left: 10px;
+        }
+
+        #themeBtn {
+            background: #3498db;
+        }
+
+        #slides {
+            text-align: center;
+            font-size: 45px;
+            margin-top: 150px;
+            opacity: 0;
+            transition: opacity 0.9s, transform 0.9s;
+            transform: translateY(20px);
+        }
+
+        #qrImg {
+            width: 350px;
+            border-radius: 12px;
+            margin-top: 10px;
+        }
+
+        #playArea {
+            display: none;
+            text-align: center;
+            margin-top: 200px;
+        }
+
+        #playBtn {
+            background: #e74c3c;
+            font-size: 55px;
+            padding: 22px 70px;
+            border: none;
+            cursor: pointer;
+            border-radius: 20px;
+            font-weight: bold;
+            transition: transform 0.25s;
+            box-shadow: 0 0 15px red;
+        }
+
+        #playBtn:hover {
+            transform: scale(1.1);
+        }
+
+        /* Light theme */
+        .light {
+            background: #fafafa;
+            color: #111;
+        }
+
+        .light #topbar {
+            background: rgba(255,255,255,0.8);
+            border-bottom: 2px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ❄️ Snow generator -->
+<script>
+for(let i = 0; i < 50; i++){
+    let s = document.createElement("div");
+    s.className = "snow";
+    s.innerHTML = "❄";
+    s.style.left = Math.random()*100 + "vw";
+    s.style.fontSize = Math.random()*20+10 + "px";
+    s.style.animationDuration = Math.random()*4+4 + "s";
+    s.style.animationDelay = Math.random()*5 + "s";
+    document.body.appendChild(s);
+}
+</script>
+
+<div id="topbar">
+    <div>🎅 Kerst Muziek Bingo</div>
+    <div style="display:flex; gap:10px; align-items:center;">
+        <div id="time"></div>
+        <button id="themeBtn">Dark/Light</button>
+        <button id="startBtn">Start</button>
+    </div>
+</div>
+
+<div id="slides"></div>
+
+<div id="playArea">
+    <button id="playBtn">▶️ SPEEL / STOP</button>
+</div>
+
+<audio id="audioPlayer"></audio>
+
+<script>
+    // CLOCK
+    setInterval(() => {
+        document.getElementById("time").innerText = new Date().toLocaleTimeString();
+    }, 1000);
+
+    // SLIDES
+    const slides = [
+        "Welkom bij Kerst Bingo! 🎄",
+        `<div>Scan om mee te doen:</div><img id='qrImg' src='Pictures/JoinQR.png'>`,
+        "Hoe werkt het spel? 🎁",
+        "Dit wordt GE-WEL-DIG 😎🔥"
+    ];
+
+    let index = 0;
+    const slidesDiv = document.getElementById("slides");
+
+    function showSlide() {
+        slidesDiv.style.opacity = 0;
+        slidesDiv.style.transform = "translateY(30px)";
+
+        setTimeout(() => {
+            slidesDiv.innerHTML = slides[index];
+            slidesDiv.style.opacity = 1;
+            slidesDiv.style.transform = "translateY(0)";
+        }, 450);
+
+        index = (index + 1) % slides.length;
+    }
+
+    showSlide();
+    const slideTimer = setInterval(showSlide, 3000);
+
+    // MUSIC
+    let used = [];
+    let playing = false;
+    const player = document.getElementById("audioPlayer");
+    const playBtn = document.getElementById("playBtn");
+
+    function randomTrack() {
+        let remaining = [];
+        for(let i=1;i<=30;i++){
+            if(!used.includes(i)) remaining.push(i);
+        }
+        if(remaining.length === 0){
+            alert("🎉 Alle liedjes zijn gespeeld!");
+            return null;
+        }
+        let pick = remaining[Math.floor(Math.random()*remaining.length)];
+        used.push(pick);
+        return `Muziek/M${pick}.mp3`;
+    }
+
+    playBtn.addEventListener("click", ()=>{
+        if(playing){
+            player.pause();
+            player.currentTime = 0;
+            playing = false;
+            playBtn.innerText = "▶️ SPEEL / STOP";
+            return;
+        }
+
+        let track = randomTrack();
+        if(!track) return;
+
+        player.src = track;
+        player.play();
+        playing = true;
+        playBtn.innerText = "⏹ STOP";
+    });
+
+    // START BUTTON
+    document.getElementById("startBtn").addEventListener("click", ()=>{
+        clearInterval(slideTimer);
+        slidesDiv.style.opacity = 0;
+
+        setTimeout(()=>{
+            slidesDiv.style.display = "none";
+            document.getElementById("playArea").style.display = "block";
+        }, 900);
+    });
+
+    // THEME SWITCH
+    document.getElementById("themeBtn").addEventListener("click", ()=>{
+        document.body.classList.toggle("light");
+    });
+</script>
+
+</body>
+</html>
