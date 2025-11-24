@@ -1,112 +1,284 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-<meta charset="UTF-8" />
-<title>Kerst Bingo Host 🎄</title>
-<style>
-body{background:#101820;color:white;font-family:Arial;text-align:center;padding:20px;}
-button{padding:15px;font-size:18px;border:none;background:#28a745;color:white;border-radius:10px;margin:10px;cursor:pointer;}
-button:active{transform:scale(.95);}
-#song{font-size:24px;margin:20px 0;font-weight:bold;}
-</style>
+    <meta charset="UTF-8"/>
+    <title>Kerst Bingo</title>
+    <style>
+        body {
+            margin: 0;
+            background: #0d0d0d;
+            color: white;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            transition: background 0.5s, color 0.5s;
+        }
+
+        /* Snow */
+        .snow {
+            position: fixed;
+            top: -10px;
+            color: white;
+            animation: fall linear infinite;
+            opacity: 0.8;
+            pointer-events: none;
+        }
+
+        @keyframes fall {
+            0% {transform: translateY(-10px);}
+            100% {transform: translateY(110vh);}
+        }
+
+        #topbar {
+            background: rgba(20,20,20,0.8);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 20px;
+            border-bottom: 2px solid #555;
+        }
+
+        #startBtn {
+            background: #27ae60;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        #slides {
+            text-align: center;
+            font-size: 42px;
+            margin-top: 150px;
+            opacity: 0;
+            transition: opacity .7s, transform .7s;
+        }
+
+        #qrImg {
+            width: 350px;
+            margin-top: 12px;
+            border-radius: 10px;
+        }
+
+        /* Mode Select */
+        #modeSelect {
+            display: none;
+            text-align: center;
+            margin-top: 200px;
+        }
+
+        .modeBtn {
+            background: #f39c12;
+            padding: 20px 50px;
+            font-size: 40px;
+            cursor: pointer;
+            border-radius: 18px;
+            border: none;
+            margin: 10px;
+            transition: 0.25s;
+        }
+
+        .modeBtn:hover {
+            transform: scale(1.1);
+        }
+
+        /* Manual mode button */
+        #playArea {
+            display: none;
+            text-align: center;
+            margin-top: 200px;
+        }
+
+        #playBtn {
+            background: #e74c3c;
+            font-size: 55px;
+            padding: 22px 70px;
+            border: none;
+            cursor: pointer;
+            border-radius: 20px;
+            font-weight: bold;
+            transition: 0.25s;
+        }
+
+        #playBtn:hover {
+            transform: scale(1.1);
+        }
+
+        /* ALERT POPUPS */
+        .alertBox {
+            position: fixed;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #ffffff;
+            padding: 50px;
+            border-radius: 20px;
+            font-size: 60px;
+            font-weight: bold;
+            color: black;
+            display: none;
+            box-shadow: 0 0 25px white;
+        }
+    </style>
 </head>
+
 <body>
 
-<h1>🎅 Kerst Muziek Bingo - Host</h1>
-<p id="status">⏳ Verbinden...</p>
-<p id="song">Geen liedje</p>
+<!-- Snow -->
+<script>
+for(let i=0;i<50;i++){
+    let s=document.createElement("div");
+    s.className="snow";
+    s.innerHTML="❄";
+    s.style.left=Math.random()*100+"vw";
+    s.style.fontSize=Math.random()*20+10+"px";
+    s.style.animationDuration=Math.random()*4+4+"s";
+    s.style.animationDelay=Math.random()*6+"s";
+    document.body.appendChild(s);
+}
+</script>
 
-<button id="start">▶ Start</button>
-<button id="next" disabled>🔀 Volgende Liedje</button>
-<button id="reset">♻ Reset</button>
+<div id="topbar">
+    <div>🎄 Kerst Muziek Bingo</div>
+    <div id="time"></div>
+    <button id="startBtn">Start</button>
+</div>
+
+<div id="slides"></div>
+
+<!-- Mode select -->
+<div id="modeSelect">
+    <button class="modeBtn" id="autoMode">🤖 Auto</button>
+    <button class="modeBtn" id="hostMode">🎤 Host</button>
+</div>
+
+<!-- Manual play -->
+<div id="playArea">
+    <button id="playBtn">▶️ SPEEL / STOP</button>
+</div>
+
+<!-- Alerts -->
+<div class="alertBox" id="alertBingo">🎉 BINGO!!! 🎉</div>
+<div class="alertBox" id="alertFalse">❌ VALSE BINGO ❌</div>
+
+<audio id="audioPlayer"></audio>
 
 <script>
-/* ---------- CONFIG ---------- */
-const BIN = "69244907ae596e708f6d9ca4";
-const KEY = "$2a$10$wgQZzbDjasLxt8TGqG52TOPxciwArMKp2mqWH5GEeNR9/wxTf4sn.";
-const SONGS = [
- "Mariah Carey - All I Want For Christmas Is You.mp3",
- "Wham - Last Christmas.mp3",
- "Sia - Snowman.mp3",
- "Michael Bublé - Holly Jolly Christmas.mp3",
- "Jingle Bell Rock.mp3"
+/* CLOCK */
+setInterval(()=> {
+    document.getElementById("time").innerText = new Date().toLocaleTimeString();
+},1000);
+
+/* SLIDES */
+const slides = [
+    "Welkom bij Kerst Bingo! 🎄",
+    `<div>Scan om mee te doen:</div><img id='qrImg' src='Pictures/JoinQR.png'>`,
+    "Hoe werkt het spel? 🎁",
+    "Dit wordt GE-WEL-DIG 😎🔥"
 ];
 
-let audio = new Audio();
-let state = null;
+let index = 0;
+const slideBox = document.getElementById("slides");
 
-/* ---------- JSONBIN ---------- */
-async function readState(){
- const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN}/latest`,{
-  headers:{ "X-Master-Key": KEY }
- });
- return (await res.json()).record;
+function showSlide(){
+    slideBox.style.opacity=0;
+    slideBox.style.transform="translateY(30px)";
+    setTimeout(()=>{
+        slideBox.innerHTML=slides[index];
+        slideBox.style.opacity=1;
+        slideBox.style.transform="translateY(0)";
+    },300);
+    index=(index+1)%slides.length;
 }
 
-async function writeState(data){
- await fetch(`https://api.jsonbin.io/v3/b/${BIN}`,{
-  method:"PUT",
-  headers:{ "X-Master-Key": KEY, "Content-Type": "application/json" },
-  body:JSON.stringify(data)
- });
+showSlide();
+let slideLoop = setInterval(showSlide,3000);
+
+/* MUSIC SYSTEM */
+let used = [];
+let playing=false;
+const player=document.getElementById("audioPlayer");
+
+function pickSong(){
+    let remaining = [];
+    for(let i=1;i<=30;i++){
+        if(!used.includes(i)) remaining.push(i);
+    }
+    if(remaining.length===0){ alert("🎉 Alles is gespeeld!"); return null; }
+    let pick=remaining[Math.floor(Math.random()*remaining.length)];
+    used.push(pick);
+    return `Muziek/M${pick}.mp3`;
 }
 
-/* ---------- HOST LOGIC ---------- */
-async function init(){
- try {state = await readState();}
- catch{state = defaultState(); await writeState(state);}
- document.getElementById("status").innerText = "🔗 Verbonden";
+/* MANUAL PLAY */
+document.getElementById("playBtn").addEventListener("click",()=>{
+    if(playing){
+        player.pause();
+        player.currentTime=0;
+        playing=false;
+        playBtn.innerText="▶️ SPEEL / STOP";
+        return;
+    }
 
- if(state.mode === "playing") enableControls();
- updateUI();
- setInterval(sync,1500);
+    let song=pickSong();
+    if(!song) return;
+
+    player.src=song;
+    player.play();
+    playing=true;
+    playBtn.innerText="⏹ STOP";
+});
+
+/* START BUTTON */
+document.getElementById("startBtn").addEventListener("click",()=>{
+    clearInterval(slideLoop);
+    slideBox.style.opacity=0;
+
+    setTimeout(()=>{
+        slideBox.style.display="none";
+        document.getElementById("modeSelect").style.display="block";
+    },700);
+});
+
+/* AUTO MODE */
+document.getElementById("autoMode").addEventListener("click",()=>{
+    document.getElementById("modeSelect").style.display="none";
+
+    function autoNext(){
+        let song=pickSong();
+        if(!song) return;
+
+        player.src=song;
+        player.play();
+
+        setTimeout(()=>player.pause(),30000); // 30 sec spelen
+
+        if(used.length<30) setTimeout(autoNext,40000); // 10 sec pauze
+    }
+
+    autoNext();
+});
+
+/* HOST MODE */
+document.getElementById("hostMode").addEventListener("click",()=>{
+    document.getElementById("modeSelect").style.display="none";
+    document.getElementById("playArea").style.display="block";
+});
+
+/* HOTKEYS */
+document.addEventListener("keydown",(e)=>{
+    if(e.key==="1") showAlert("alertBingo");
+    if(e.key==="2") showAlert("alertFalse");
+});
+
+function showAlert(id){
+    let box=document.getElementById(id);
+    box.style.display="block";
+    setTimeout(()=>box.style.display="none",3000);
 }
-
-function defaultState(){
- return {mode:"waiting",players:{},current:null,played:[]}
-}
-
-function enableControls(){
- document.getElementById("next").disabled = false;
-}
-
-async function start(){
- state.mode="playing";
- await writeState(state);
- enableControls();
-}
-
-async function nextSong(){
- const left = SONGS.filter(s=>!state.played.includes(s));
- if(!left.length) return alert("🎄 Alle nummers zijn gespeeld!");
- const pick = left[Math.floor(Math.random()*left.length)];
- state.current = pick;
- state.played.push(pick);
- audio.src = "Muziek/" + pick;
- audio.play();
- await writeState(state);
-}
-
-async function reset(){
- state = defaultState();
- await writeState(state);
- location.reload();
-}
-
-async function sync(){
- state = await readState();
- updateUI();
-}
-
-function updateUI(){
- document.getElementById("song").innerText = state.current || "Geen liedje";
-}
-
-document.getElementById("start").onclick = start;
-document.getElementById("next").onclick = nextSong;
-document.getElementById("reset").onclick = reset;
-
-init();
 </script>
+
 </body>
 </html>
