@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Player — Kerst Bingo</title>
+<style>
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#081227;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;padding:12px}
+  .card{width:100%;max-width:420px;background:linear-gradient(180deg,#081226,#0c1828);border-radius:12px;padding:14px;box-shadow:0 8px 30px rgba(0,0,0,.6)}
+  h1{font-size:20px;margin:4px 0 10px}
+  input[type=text]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.08);margin-bottom:10px;background:rgba(255,255,255,.02);color:#fff}
+  button{width:100%;padding:12px;border-radius:10px;border:none;background:#e74c3c;color:#fff;font-weight:700}
+  #bingoCard{display:none;margin-top:10px}
+  .grid{display:flex;flex-wrap:wrap}
+  .cell{width:33.333%;padding:6px;box-sizing:border-box}
+  .cell button{width:100%;padding:16px;border-radius:8px;border:2px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);color:#fff;font-size:16px}
+  .cell button.active{background:#27ae60;color:#000}
+  .small{font-size:12px;color:#bbb;margin-top:8px}
+  .confetti{position:fixed;left:0;right:0;top:0;bottom:0;pointer-events:none;display:none;z-index:9999}
+  @media(max-width:360px){ .cell button{padding:12px;font-size:14px} }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>🎄 Kerst Bingo — Doe mee</h1>
+    <div id="joinWrap">
+      <input id="nick" placeholder="Voer je nickname in (bijv. Joey)" maxlength="20" />
+      <button id="joinBtn">Join met nickname</button>
+      <div class="small">Gebruik QR of link naar deze pagina. Je kaart blijft bewaard op dit apparaat.</div>
+    </div>
+
+    <div id="bingoCard">
+      <div class="small">Nickname: <strong id="showNick"></strong></div>
+      <div id="grid" class="grid"></div>
+      <div style="margin-top:10px">
+        <button id="bingoBtn">🔔 Ik heb BINGO</button>
+        <button id="falseBtn" style="margin-top:8px;background:#95a5a6">Valse Bingo</button>
+      </div>
+    </div>
+
+    <div id="joinedMsg" style="display:none;margin-top:10px" class="small">Je zit in het spel. Host krijgt een melding.</div>
+  </div>
+
+  <div class="confetti" id="confetti"></div>
+
+<script>
+/* ---------- JSONBin CONFIG (vul jouw waarden in) ---------- */
+var JSONBIN_BIN_ID = "69244907ae596e708f6d9ca4";
+var JSONBIN_MASTER_KEY = "$2a$10$wgQZzbDjasLxt8TGqG52TOPxciwArMKp2mqWH5GEeNR9/wxTf4sn."; // for writes: MASTER_KEY or PRIVATE_KEY
+var JSONBIN_ENDPOINT = "https://api.jsonbin.io/v3/b/" + JSONBIN_BIN_ID;
+
+/* Sound effects helper: drop files later in /SoundEffects/ */
+function playSFX(name){
+  try{
+    var a = new Audio("SoundEffects/" + name + ".mp3");
+    a.play();
+  }catch(e){}
+}
+
+/* simple XHR read/write (compatible) */
+function readBin(cb){
+  var url = JSONBIN_ENDPOINT + "/latest";
+  var req = new XMLHttpRequest();
+  req.open("GET", url, true);
+  req.setRequestHeader("X-Master-Key", JSONBIN_MASTER_KEY);
+  req.onreadystatechange = function(){
+    if(req.readyState === 4){
+      if(req.status >=200 && req.status <300){
+        try{ cb && cb(JSON.parse(req.responseText)); }catch(e){ cb && cb(null); }
+      } else { console.error("JSONBin GET error", req.status, req.responseText); cb && cb(null); }
+    }
+  };
+  req.send();
+}
+function writeBin(json, cb){
+  // because we will overwrite whole record, first get latest metadata to obtain recordVersion if needed.
+  var url = JSONBIN_ENDPOINT;
+  var req = new XMLHttpRequest();
+  req.open("PUT", url, true);
+  req.setRequestHeader("Content-Type","application/json");
+  req.setRequestHeader("X-Master-Key", JSONBIN_MASTER_KEY);
+  req.onreadystatechange = function(){
+    if(req.readyState === 4){
+      if(req.status >=200 && req.status < 300){
+        try{ cb && cb(JSON.parse(req.responseText)); }catch(e){ cb && cb(null); }
+      } else { console.error("JSONBin PUT error", req.status, req.responseText); cb && cb(null); }
+    }
+  };
+  req.send(JSON.stringify(json));
+}
+
+/* Bingo word pool (titles) - should match titles host uses */
+var pool = [
+  "Last Christmas", "All I Want For Christmas Is You", "Snowman",
+  "Jingle Bell Rock", "Santa Tell Me", "Let It Snow",
+  "Silent Night", "Rockin' Around", "Feliz Navidad", "Rudolph"
+];
+
+/* generate card of 9 unique */
+function makeCard(){
+  var copy = pool.slice();
+  var chosen = [];
+  for(var i=0;i<9;i++){
+    var idx = Math.floor(Math.random()*copy.length);
+    chosen.push(copy.splice(idx,1)[0]);
+  }
+  return chosen;
+}
+
+/* UI wiring */
+var joinBtn = document.getElementById('joinBtn'), nickInput = document.getElementById('nick');
+var bingoCard = document.getElementById('bingoCard'), grid = document.getElementById('grid');
+var showNick = document.getElementById('showNick'), joinedMsg = document.getElementById('joinedMsg');
+var bingoBtn = document.getElementById('bingoBtn'), falseBtn = document.getElementById('falseBtn');
+var confettiEl = document.getElementById('confetti');
+
+var myNick = null;
+var myCard = null;
+var myKey = null; // for bin stored players key (not necessary but we'll store players as object keyed by nickname)
+
+/* store/get card locally (localStorage) so refresh keeps same card */
+function saveLocalCard(nick, card){
+  try{ localStorage.setItem("bingo_card_" + nick, JSON.stringify(card)); }catch(e){}
+}
+function getLocalCard(nick){
+  try{ var s = localStorage.getItem("bingo_card_" + nick); return s ? JSON.parse(s): null; }catch(e){ return null; }
+}
+
+/* render card */
+function renderCard(card){
+  grid.innerHTML = '';
+  for(var i=0;i<card.length;i++){
+    var c = document.createElement('div'); c.className = 'cell';
+    var b = document.createElement('button'); b.innerText = card[i];
+    (function(btn, txt){
+      btn.addEventListener('click', function(){
+        btn.classList.toggle('active');
+        // mark locally only; player decides bingo manually later
+        playSFX('button');
+      });
+    })(b, card[i]);
+    c.appendChild(b); grid.appendChild(c);
+  }
+}
+
+/* join flow */
+joinBtn.addEventListener('click', function(){
+  var nick = nickInput.value.trim();
+  if(!nick) return alert('Kies een nickname.');
+  myNick = nick;
+  showNick.innerText = myNick;
+  nickInput.disabled = true; joinBtn.disabled = true; joinBtn.innerText = 'Verbonden...';
+
+  // check localStorage for saved card
+  var saved = getLocalCard(myNick);
+  if(saved){
+    myCard = saved;
+    renderCard(myCard);
+    bingoCard.style.display = 'block';
+    joinedMsg.style.display = 'block';
+    joinBtn.innerText = 'Gereed';
+    // send join event to bin
+    readBin(function(res){
+      var rec = (res && res.record) ? res.record : {players:{},events:[]};
+      if(!rec.players) rec.players = {};
+      rec.players[myNick] = {card: myCard, marked: []};
+      rec.events = rec.events || [];
+      rec.events.push({type:'join', nick:myNick, ts: Date.now()});
+      writeBin(rec, function(){});
+    });
+    return;
+  }
+
+  // else generate new card
+  myCard = makeCard();
+  saveLocalCard(myNick, myCard);
+  renderCard(myCard);
+  bingoCard.style.display = 'block';
+  joinedMsg.style.display = 'block';
+  joinBtn.innerText = 'Gereed';
+  playSFX('button');
+
+  // write to bin: add player (we will overwrite record: read-modify-write)
+  readBin(function(res){
+    var rec = (res && res.record) ? res.record : {currentSong:null, players:{}, events:[]};
+    if(!rec.players) rec.players = {};
+    rec.players[myNick] = {card: myCard, marked: []};
+    rec.events = rec.events || [];
+    rec.events.push({type:'join', nick:myNick, ts: Date.now()});
+    writeBin(rec, function(){});
+  });
+});
+
+/* Bingo & False buttons */
+bingoBtn.addEventListener('click', function(){
+  if(!myNick) return alert('Eerst joinen met nickname.');
+  // notify host by writing an event
+  readBin(function(res){
+    var rec = (res && res.record) ? res.record : {currentSong:null, players:{}, events:[]};
+    rec.events = rec.events || [];
+    rec.events.push({type:'bingo', nick:myNick, ts: Date.now()});
+    writeBin(rec, function(){
+      // show confetti & sfx on player
+      showConfetti();
+      playSFX('bingo');
+      alert('BINGO verstuurd naar host!');
+    });
+  });
+});
+
+falseBtn.addEventListener('click', function(){
+  if(!myNick) return alert('Eerst joinen met nickname.');
+  readBin(function(res){
+    var rec = (res && res.record) ? res.record : {currentSong:null, players:{}, events:[]};
+    rec.events = rec.events || [];
+    rec.events.push({type:'falseBingo', nick:myNick, ts: Date.now()});
+    writeBin(rec, function(){
+      playSFX('false');
+      alert('Valse Bingo verstuurd naar host!');
+    });
+  });
+});
+
+/* confetti: simple visual */
+function showConfetti(){
+  confettiEl.style.display = 'block';
+  confettiEl.innerHTML = ''; // clear
+  for(var i=0;i<60;i++){
+    var d = document.createElement('div');
+    d.style.position = 'absolute';
+    d.style.left = Math.random()*100 + "%";
+    d.style.top = Math.random()*50 + "%";
+    d.style.width = "8px"; d.style.height="14px";
+    d.style.background = ["#ff3b3b","#ffd166","#06d6a0","#4d96ff","#b862ff"][Math.floor(Math.random()*5)];
+    d.style.opacity = 0.95;
+    d.style.transform = "rotate(" + Math.random()*360 + "deg)";
+    confettiEl.appendChild(d);
+  }
+  setTimeout(function(){ confettiEl.style.opacity = 1; }, 10);
+  setTimeout(function(){ confettiEl.style.display = 'none'; confettiEl.innerHTML = ''; }, 2400);
+}
+
+/* Poll for currentSong & events (every 1.5s) to optionally highlight matching tiles or show host events */
+function poll(){
+  readBin(function(res){
+    if(!res || !res.record) return;
+    var rec = res.record;
+    // if currentSong changed -> notify player UI (e.g., highlight tiles that match)
+    if(rec.currentSong && rec.currentSong.title){
+      var title = rec.currentSong.title;
+      // if myCard exists, highlight matching tile(s) briefly
+      if(myCard){
+        var buttons = grid.querySelectorAll('button');
+        for(var i=0;i<buttons.length;i++){
+          if(buttons[i].innerText === title){
+            // pulse effect
+            buttons[i].style.transition = "box-shadow .3s, transform .3s";
+            buttons[i].style.boxShadow = "0 0 18px 4px rgba(255,255,255,0.15)";
+            (function(b){ setTimeout(function(){ b.style.boxShadow=''; }, 900); })(buttons[i]);
+          }
+        }
+      }
+    }
+    // handle recent events (optional: show a small toast when host announces)
+    // players don't need to process events greatly here
+  });
+}
+setInterval(poll, 1500);
+poll();
+</script>
+</body>
+</html>
