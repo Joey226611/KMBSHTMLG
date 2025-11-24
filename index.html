@@ -203,7 +203,7 @@ const player=document.getElementById("audioPlayer");
 
 function pickSong(){
     let remaining = [];
-    for(let i=1;i<=30;i++){
+    for(let i=1;i<=16;i++){
         if(!used.includes(i)) remaining.push(i);
     }
     if(remaining.length===0){ alert("🎉 Alles is gespeeld!"); return null; }
