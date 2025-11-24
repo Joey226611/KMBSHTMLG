@@ -1,229 +1,270 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="nl">
 <head>
-    <meta charset="UTF-8"/>
-    <title>Kerst Bingo</title>
-    <style>
-        body {
-            margin: 0;
-            background: #0d0d0d;
-            color: white;
-            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden;
-            transition: background 0.5s, color 0.5s;
-        }
-
-        /* ❄️ Snow */
-        .snow {
-            position: fixed;
-            top: -10px;
-            color: white;
-            animation: fall linear infinite;
-            opacity: 0.8;
-            pointer-events: none;
-        }
-
-        @keyframes fall {
-            0% {transform: translateY(-10px);}
-            100% {transform: translateY(110vh);}
-        }
-
-        #topbar {
-            background: rgba(20,20,20,0.8);
-            padding: 12px 25px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 22px;
-            border-bottom: 2px solid #555;
-            backdrop-filter: blur(10px);
-        }
-
-        #startBtn, #themeBtn {
-            background: #2ecc71;
-            color: black;
-            font-weight: bold;
-            padding: 10px 18px;
-            cursor: pointer;
-            border-radius: 8px;
-            border: none;
-            font-size: 16px;
-            margin-left: 10px;
-        }
-
-        #themeBtn {
-            background: #3498db;
-        }
-
-        #slides {
-            text-align: center;
-            font-size: 45px;
-            margin-top: 150px;
-            opacity: 0;
-            transition: opacity 0.9s, transform 0.9s;
-            transform: translateY(20px);
-        }
-
-        #qrImg {
-            width: 350px;
-            border-radius: 12px;
-            margin-top: 10px;
-        }
-
-        #playArea {
-            display: none;
-            text-align: center;
-            margin-top: 200px;
-        }
-
-        #playBtn {
-            background: #e74c3c;
-            font-size: 55px;
-            padding: 22px 70px;
-            border: none;
-            cursor: pointer;
-            border-radius: 20px;
-            font-weight: bold;
-            transition: transform 0.25s;
-            box-shadow: 0 0 15px red;
-        }
-
-        #playBtn:hover {
-            transform: scale(1.1);
-        }
-
-        /* Light theme */
-        .light {
-            background: #fafafa;
-            color: #111;
-        }
-
-        .light #topbar {
-            background: rgba(255,255,255,0.8);
-            border-bottom: 2px solid #ccc;
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Host — Kerst Muziek Bingo</title>
+<style>
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#0b0f13;color:#fff}
+  #topbar{display:flex;justify-content:space-between;align-items:center;padding:12px;background:#07101a}
+  #title{font-size:18px}
+  #controls{display:flex;gap:8px;align-items:center}
+  button{padding:8px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:600}
+  #startBtn{background:#27ae60;color:#000}
+  #modeFrame{display:none;text-align:center;padding:18px}
+  .modeBtn{padding:12px 20px;border-radius:10px;font-size:16px;margin:6px}
+  #playArea{display:none;text-align:center;padding:16px}
+  #playBtn{background:#e74c3c;color:#fff;padding:12px 18px;border-radius:10px;font-size:16px}
+  #playersList{position:fixed;right:10px;top:72px;background:rgba(255,255,255,0.04);padding:10px;border-radius:8px;min-width:180px}
+  #alerts{position:fixed;left:50%;transform:translateX(-50%);top:40%;display:none;background:#fff;color:#000;padding:20px;border-radius:12px;font-size:20px;z-index:999}
+  #songLog{margin-top:12px;max-height:180px;overflow:auto;background:rgba(255,255,255,0.02);padding:8px;border-radius:8px}
+  .small{font-size:13px;color:#bbb}
+  @media(max-width:520px){ #playersList{display:none} }
+</style>
 </head>
 <body>
-
-<!-- ❄️ Snow generator -->
-<script>
-for(let i = 0; i < 50; i++){
-    let s = document.createElement("div");
-    s.className = "snow";
-    s.innerHTML = "❄";
-    s.style.left = Math.random()*100 + "vw";
-    s.style.fontSize = Math.random()*20+10 + "px";
-    s.style.animationDuration = Math.random()*4+4 + "s";
-    s.style.animationDelay = Math.random()*5 + "s";
-    document.body.appendChild(s);
-}
-</script>
-
 <div id="topbar">
-    <div>🎅 Kerst Muziek Bingo</div>
-    <div style="display:flex; gap:10px; align-items:center;">
-        <div id="time"></div>
-        <button id="themeBtn">Dark/Light</button>
-        <button id="startBtn">Start</button>
-    </div>
+  <div id="title">🎄 Kerst Muziek Bingo — Host</div>
+  <div id="controls">
+    <div id="time" class="small"></div>
+    <button id="startBtn">Start</button>
+  </div>
 </div>
 
-<div id="slides"></div>
+<div id="slides" style="text-align:center;padding:26px">
+  <div id="slideInner" style="font-size:26px;opacity:1">Welkom bij Kerst Bingo! <br><img src="Pictures/JoinQR.png" alt="QR" style="max-width:180px;margin-top:10px"></div>
+</div>
+
+<div id="modeFrame">
+  <div style="text-align:center;margin-top:6px">
+    <button class="modeBtn" id="autoMode" style="background:#f39c12">🤖 Auto (30s play / 10s pauze)</button>
+    <button class="modeBtn" id="hostMode" style="background:#3498db">🎤 Host (manueel)</button>
+  </div>
+  <div style="text-align:center;margin-top:12px" class="small">QR naar players: <span id="qrLink" style="word-break:break-word"></span></div>
+</div>
 
 <div id="playArea">
-    <button id="playBtn">▶️ SPEEL / STOP</button>
+  <button id="playBtn">▶️ SPEEL / STOP</button>
+  <button id="skipBtn" style="margin-left:8px">⏭ Volgend Nummer</button>
+  <div id="songLog" class="small"></div>
 </div>
 
-<audio id="audioPlayer"></audio>
+<div id="playersList"><strong>Players</strong><div id="players"></div></div>
+<div id="alerts"></div>
+
+<!-- audio -->
+<audio id="audioPlayer" preload="auto"></audio>
 
 <script>
-    // CLOCK
-    setInterval(() => {
-        document.getElementById("time").innerText = new Date().toLocaleTimeString();
-    }, 1000);
+/* ---------- JSONBin CONFIG (vul jouw waarden in) ----------
+  - BIN_ID: je bin id (bijv. "xxxxxx")
+  - MASTER_KEY: je master/private key (houd privé)
+  - ENDPOINT: jsonbin endpoint zoals https://api.jsonbin.io/v3/b/<BIN_ID>
+  Als je andere JSON-host gebruikt pas de URLs aan.
+----------------------------------------------------------- */
+var JSONBIN_BIN_ID = "69244907ae596e708f6d9ca4";
+var JSONBIN_MASTER_KEY = "$2a$10$wgQZzbDjasLxt8TGqG52TOPxciwArMKp2mqWH5GEeNR9/wxTf4sn.";
+var JSONBIN_ENDPOINT = "https://api.jsonbin.io/v3/b/" + JSONBIN_BIN_ID;
 
-    // SLIDES
-    const slides = [
-        "Welkom bij Kerst Bingo! 🎄",
-        `<div>Scan om mee te doen:</div><img id='qrImg' src='Pictures/JoinQR.png'>`,
-        "Hoe werkt het spel? 🎁",
-        "Dit wordt GE-WEL-DIG 😎🔥"
-    ];
+/* Basic song list: filenames in /Muziek/ met echte artiest/titels */
+var songs = [
+  {file:"Muziek/Mariah Carey - All I Want For Christmas Is You.mp3", title:"All I Want For Christmas Is You"},
+  {file:"Muziek/Wham - Last Christmas.mp3", title:"Last Christmas"},
+  {file:"Muziek/Sia - Snowman.mp3", title:"Snowman"}
+  /* voeg hier je bestanden toe */
+];
 
-    let index = 0;
-    const slidesDiv = document.getElementById("slides");
+var used = [];
+var playing = false;
+var audio = document.getElementById('audioPlayer');
+var playBtn = document.getElementById('playBtn');
+var skipBtn = document.getElementById('skipBtn');
+var songLog = document.getElementById('songLog');
 
-    function showSlide() {
-        slidesDiv.style.opacity = 0;
-        slidesDiv.style.transform = "translateY(30px)";
+/* clock */
+setInterval(function(){ document.getElementById('time').innerText = new Date().toLocaleTimeString(); },1000);
 
-        setTimeout(() => {
-            slidesDiv.innerHTML = slides[index];
-            slidesDiv.style.opacity = 1;
-            slidesDiv.style.transform = "translateY(0)";
-        }, 450);
+/* slide simple */
+var slideInner = document.getElementById('slideInner');
+var slides = [
+  "Welkom bij Kerst Bingo!",
+  "<div>Scan om mee te doen:</div><img src='Pictures/JoinQR.png' style='max-width:200px;margin-top:8px'>",
+  "Hoe werkt het spel?",
+  "Dit wordt GE-WEL-DIG!"
+];
+var sIdx = 0;
+function showSlide(){
+  slideInner.style.opacity = 0;
+  setTimeout(function(){
+    slideInner.innerHTML = slides[sIdx];
+    slideInner.style.opacity = 1;
+    sIdx = (sIdx + 1) % slides.length;
+  }, 350);
+}
+var slideTimer = setInterval(showSlide, 3000);
 
-        index = (index + 1) % slides.length;
+/* helper pick */
+function pickSongIndex(){
+  var remaining = [];
+  for(var i=0;i<songs.length;i++){ if(used.indexOf(i) === -1) remaining.push(i); }
+  if(remaining.length === 0) return null;
+  var pick = remaining[Math.floor(Math.random()*remaining.length)];
+  used.push(pick);
+  return pick;
+}
+function logPlayed(t){
+  var el = document.createElement('div'); el.innerText = (new Date()).toLocaleTimeString() + " — " + t;
+  songLog.insertBefore(el, songLog.firstChild);
+}
+
+/* send/update JSONBin helper */
+function writeBin(json, cb){
+  var url = JSONBIN_ENDPOINT;
+  var req = new XMLHttpRequest();
+  req.open("PUT", url, true);
+  req.setRequestHeader("Content-Type","application/json");
+  req.setRequestHeader("X-Master-Key", JSONBIN_MASTER_KEY);
+  req.onreadystatechange = function(){
+    if(req.readyState === 4){
+      if(req.status >= 200 && req.status < 300){
+        try{ cb && cb(JSON.parse(req.responseText)); } catch(e){ cb && cb(null); }
+      } else { console.error("JSONBin PUT error", req.status, req.responseText); cb && cb(null); }
     }
-
-    showSlide();
-    const slideTimer = setInterval(showSlide, 3000);
-
-    // MUSIC
-    let used = [];
-    let playing = false;
-    const player = document.getElementById("audioPlayer");
-    const playBtn = document.getElementById("playBtn");
-
-    function randomTrack() {
-        let remaining = [];
-        for(let i=1;i<=30;i++){
-            if(!used.includes(i)) remaining.push(i);
-        }
-        if(remaining.length === 0){
-            alert("🎉 Alle liedjes zijn gespeeld!");
-            return null;
-        }
-        let pick = remaining[Math.floor(Math.random()*remaining.length)];
-        used.push(pick);
-        return `Muziek/M${pick}.mp3`;
+  };
+  req.send(JSON.stringify(json));
+}
+function readBin(cb){
+  var url = JSONBIN_ENDPOINT + "/latest";
+  var req = new XMLHttpRequest();
+  req.open("GET", url, true);
+  req.setRequestHeader("X-Master-Key", JSONBIN_MASTER_KEY); // some bins public read; if not, must include
+  req.onreadystatechange = function(){
+    if(req.readyState === 4){
+      if(req.status >=200 && req.status < 300){
+        try{ cb && cb(JSON.parse(req.responseText)); } catch(e){ cb && cb(null); }
+      } else { console.error("JSONBin GET error", req.status, req.responseText); cb && cb(null); }
     }
+  };
+  req.send();
+}
 
-    playBtn.addEventListener("click", ()=>{
-        if(playing){
-            player.pause();
-            player.currentTime = 0;
-            playing = false;
-            playBtn.innerText = "▶️ SPEEL / STOP";
-            return;
+/* initialize minimal bin if empty */
+function initBinIfNeeded(){
+  readBin(function(data){
+    if(!data || !data.record){
+      var base = {
+        currentSong: null,
+        players: {},        /* object: nick -> { card:[], marked:[] } */
+        events: []          /* array of events {type:'bingo', nick:'', ts:...} */
+      };
+      writeBin(base, function(){ console.log("Created base bin"); });
+    }
+  });
+}
+
+/* Start button behavior: hide slides, show modeFrame */
+document.getElementById('startBtn').addEventListener('click', function(){
+  clearInterval(slideTimer);
+  slideInner.style.opacity = 0;
+  setTimeout(function(){
+    document.getElementById('slides').style.display = 'none';
+    document.getElementById('modeFrame').style.display = 'block';
+    // show quick QR link
+    var link = (location.origin + location.pathname.replace(/[^\/]*$/,'') + "player.html").replace('//','/').replace(':/', '://');
+    document.getElementById('qrLink').innerText = link + "  (scan met QR + stuur nickname)";
+  }, 500);
+});
+
+/* play/skip manual */
+playBtn.addEventListener('click', function(){
+  if(playing){ audio.pause(); audio.currentTime = 0; playing=false; playBtn.innerText='▶️ SPEEL / STOP'; return; }
+  var idx = pickSongIndex(); if(idx === null){ alert("Alle nummers gespeeld"); return; }
+  audio.src = songs[idx].file; audio.play(); playing=true; playBtn.innerText='⏹ STOP';
+  logPlayed(songs[idx].title);
+  // update bin currentSong
+  readBin(function(res){
+    var record = (res && res.record) ? res.record : {currentSong:null, players:{}, events:[]};
+    record.currentSong = {title: songs[idx].title, ts: Date.now()};
+    writeBin(record);
+  });
+});
+skipBtn.addEventListener('click', function(){
+  audio.pause(); audio.currentTime = 0; playing=false; playBtn.innerText='▶️ SPEEL / STOP';
+  var idx = pickSongIndex(); if(idx === null){ alert("Alle nummers gespeeld"); return; }
+  audio.src = songs[idx].file; audio.play(); playing=true; playBtn.innerText='⏹ STOP';
+  logPlayed(songs[idx].title);
+  readBin(function(res){
+    var record = (res && res.record) ? res.record : {currentSong:null, players:{}, events:[]};
+    record.currentSong = {title: songs[idx].title, ts: Date.now()};
+    writeBin(record);
+  });
+});
+
+/* Auto mode (30s play / 10s pause) */
+document.getElementById('autoMode').addEventListener('click', function(){
+  document.getElementById('modeFrame').style.display='none';
+  document.getElementById('playArea').style.display='block';
+  (function autoLoop(){
+    var idx = pickSongIndex(); if(idx === null){ alert("Alle nummers gespeeld"); return; }
+    audio.src = songs[idx].file; audio.play(); playing=true; playBtn.innerText='⏹ STOP';
+    logPlayed(songs[idx].title);
+    readBin(function(res){
+      var record = (res && res.record) ? res.record : {currentSong:null, players:{}, events:[]};
+      record.currentSong = {title: songs[idx].title, ts: Date.now()};
+      writeBin(record);
+    });
+    setTimeout(function(){ audio.pause(); playing=false; playBtn.innerText='▶️ SPEEL / STOP'; }, 30000);
+    if(used.length < songs.length) setTimeout(autoLoop, 40000);
+  })();
+});
+/* Host mode */
+document.getElementById('hostMode').addEventListener('click', function(){
+  document.getElementById('modeFrame').style.display='none';
+  document.getElementById('playArea').style.display='block';
+});
+
+/* Poll players & events every 1.5s */
+function poll(){
+  readBin(function(res){
+    if(!res || !res.record) return;
+    var rec = res.record;
+    // players list
+    var pEl = document.getElementById('players');
+    pEl.innerHTML = '';
+    for(var k in rec.players){
+      var d = document.createElement('div');
+      d.innerText = k;
+      pEl.appendChild(d);
+    }
+    // events
+    if(rec.events && rec.events.length){
+      // process new events (we'll pop handled ones client-side by remembering last ts)
+      if(!window._lastEventTs) window._lastEventTs = 0;
+      for(var i=0;i<rec.events.length;i++){
+        var ev = rec.events[i];
+        if(ev.ts > window._lastEventTs){
+          window._lastEventTs = ev.ts;
+          if(ev.type === 'bingo'){
+            showAlert("🎉 BINGO: " + (ev.nick || ''));
+            // (optional) play sound by writing a small 'action' into bin (players can react), but for now host just shows
+          } else if(ev.type === 'falseBingo'){
+            showAlert("❌ VALSE BINGO: " + (ev.nick || ''));
+          }
         }
+      }
+    }
+  });
+}
+setInterval(poll, 1500);
+poll();
+initBinIfNeeded();
 
-        let track = randomTrack();
-        if(!track) return;
-
-        player.src = track;
-        player.play();
-        playing = true;
-        playBtn.innerText = "⏹ STOP";
-    });
-
-    // START BUTTON
-    document.getElementById("startBtn").addEventListener("click", ()=>{
-        clearInterval(slideTimer);
-        slidesDiv.style.opacity = 0;
-
-        setTimeout(()=>{
-            slidesDiv.style.display = "none";
-            document.getElementById("playArea").style.display = "block";
-        }, 900);
-    });
-
-    // THEME SWITCH
-    document.getElementById("themeBtn").addEventListener("click", ()=>{
-        document.body.classList.toggle("light");
-    });
+/* show alert */
+function showAlert(txt){
+  var a = document.getElementById('alerts');
+  a.innerText = txt; a.style.display='block';
+  setTimeout(function(){ a.style.display='none'; }, 3500);
+}
 </script>
-
 </body>
 </html>
